@@ -267,7 +267,99 @@ const options: swaggerJSDoc.Options = {
           }
         },
         
-        // Audit log schema
+        // Change password request
+        ChangePasswordRequest: {
+          type: 'object',
+          required: ['currentPassword', 'newPassword'],
+          properties: {
+            currentPassword: {
+              type: 'string',
+              minLength: 8,
+              description: 'Current password'
+            },
+            newPassword: {
+              type: 'string',
+              minLength: 8,
+              pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]',
+              description: 'New password (min 8 chars, must contain uppercase, lowercase, digit, and special character)'
+            }
+          }
+        },
+
+        // Refresh token request
+        RefreshTokenRequest: {
+          type: 'object',
+          required: ['refreshToken'],
+          properties: {
+            refreshToken: {
+              type: 'string',
+              description: 'Valid refresh token received from login'
+            }
+          }
+        },
+
+        // Status update request
+        StatusUpdateRequest: {
+          type: 'object',
+          required: ['status'],
+          properties: {
+            status: {
+              type: 'string',
+              enum: ['PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'REQUIRES_CHANGES'],
+              description: 'New status for the submission'
+            },
+            reason: {
+              type: 'string',
+              description: 'Optional reason for status change'
+            }
+          }
+        },
+
+        // API info response
+        ApiInfoResponse: {
+          type: 'object',
+          properties: {
+            version: {
+              type: 'string',
+              example: '1.0.0'
+            },
+            environment: {
+              type: 'string',
+              example: 'production'
+            },
+            timestamp: {
+              type: 'string',
+              format: 'date-time'
+            },
+            endpoints: {
+              type: 'object',
+              properties: {
+                submissions: {
+                  type: 'string',
+                  example: '/api/v1/submissions'
+                },
+                auth: {
+                  type: 'string',
+                  example: '/api/v1/auth'
+                },
+                audit: {
+                  type: 'string',
+                  example: '/api/v1/audit'
+                },
+                health: {
+                  type: 'string',
+                  example: '/api/v1/health'
+                },
+                docs: {
+                  type: 'string',
+                  example: '/docs'
+                }
+              }
+            }
+          }
+        },
+
+        // Audit log schema (if not already defined)
         AuditLog: {
           type: 'object',
           properties: {
@@ -277,12 +369,11 @@ const options: swaggerJSDoc.Options = {
             },
             action: {
               type: 'string',
-              enum: ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'STATUS_CHANGE', 'REVIEW', 'APPROVE', 'REJECT'],
               description: 'Action performed'
             },
-            entityType: {
+            entity: {
               type: 'string',
-              description: 'Type of entity affected'
+              description: 'Entity affected'
             },
             entityId: {
               type: 'string',
@@ -290,32 +381,140 @@ const options: swaggerJSDoc.Options = {
             },
             adminId: {
               type: 'string',
-              description: 'ID of admin who performed the action (if applicable)'
-            },
-            description: {
-              type: 'string',
-              description: 'Human-readable description of the action'
-            },
-            oldValues: {
-              type: 'object',
-              description: 'Previous values before change'
-            },
-            newValues: {
-              type: 'object',
-              description: 'New values after change'
+              description: 'ID of the admin who performed the action'
             },
             ipAddress: {
               type: 'string',
-              description: 'IP address of the client'
+              description: 'IP address of the request'
             },
             userAgent: {
               type: 'string',
               description: 'User agent string'
             },
-            createdAt: {
+            details: {
+              type: 'object',
+              description: 'Additional details about the action'
+            },
+            timestamp: {
               type: 'string',
               format: 'date-time',
-              description: 'Timestamp of the action'
+              description: 'When the action occurred'
+            }
+          }
+        }
+      },
+      
+      responses: {
+        UnauthorizedError: {
+          description: 'Authentication required',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/ErrorResponse'
+              },
+              examples: {
+                missing_token: {
+                  summary: 'Missing authentication token',
+                  value: {
+                    success: false,
+                    message: 'Access token required',
+                    error: 'MISSING_TOKEN',
+                    timestamp: '2025-07-19T09:41:07.123Z',
+                    requestId: 'req_12345'
+                  }
+                },
+                invalid_token: {
+                  summary: 'Invalid or expired token',
+                  value: {
+                    success: false,
+                    message: 'Invalid or expired token',
+                    error: 'INVALID_TOKEN',
+                    timestamp: '2025-07-19T09:41:07.123Z',
+                    requestId: 'req_12345'
+                  }
+                }
+              }
+            }
+          }
+        },
+        
+        ForbiddenError: {
+          description: 'Insufficient permissions',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/ErrorResponse'
+              },
+              example: {
+                success: false,
+                message: 'Insufficient permissions',
+                error: 'FORBIDDEN',
+                timestamp: '2025-07-19T09:41:07.123Z',
+                requestId: 'req_12345'
+              }
+            }
+          }
+        },
+        
+        RateLimitError: {
+          description: 'Rate limit exceeded',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/ErrorResponse'
+              },
+              examples: {
+                general_rate_limit: {
+                  summary: 'General rate limit exceeded',
+                  value: {
+                    success: false,
+                    message: 'Rate limit exceeded. Try again later.',
+                    error: 'RATE_LIMIT_EXCEEDED',
+                    timestamp: '2025-07-19T09:41:07.123Z',
+                    requestId: 'req_12345'
+                  }
+                },
+                submission_rate_limit: {
+                  summary: 'Submission rate limit exceeded',
+                  value: {
+                    success: false,
+                    message: 'Too many submission attempts. Only 5 submissions allowed per hour.',
+                    error: 'SUBMISSION_RATE_LIMIT',
+                    timestamp: '2025-07-19T09:41:07.123Z',
+                    requestId: 'req_12345'
+                  }
+                }
+              }
+            }
+          }
+        },
+        
+        ValidationError: {
+          description: 'Validation error',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/ErrorResponse'
+              },
+              example: {
+                success: false,
+                message: 'Validation failed',
+                error: 'VALIDATION_ERROR',
+                details: {
+                  errors: [
+                    {
+                      field: 'email',
+                      message: 'Invalid email format'
+                    },
+                    {
+                      field: 'teamName',
+                      message: 'Team name is required'
+                    }
+                  ]
+                },
+                timestamp: '2025-07-19T09:41:07.123Z',
+                requestId: 'req_12345'
+              }
             }
           }
         }
@@ -327,6 +526,10 @@ const options: swaggerJSDoc.Options = {
       }
     ],
     tags: [
+      {
+        name: 'General',
+        description: 'General API information and endpoints'
+      },
       {
         name: 'Submissions',
         description: 'Hackathon submission management'
@@ -342,6 +545,10 @@ const options: swaggerJSDoc.Options = {
       {
         name: 'Health',
         description: 'System health and monitoring'
+      },
+      {
+        name: 'Documentation',
+        description: 'API documentation endpoints'
       }
     ]
   },

@@ -78,6 +78,37 @@ app.use(requestLogger);
 app.use('/', routes);
 
 // Health check endpoint (outside of rate limiting)
+/**
+ * @swagger
+ * /ping:
+ *   get:
+ *     summary: Simple ping endpoint
+ *     description: Ultra-lightweight endpoint for basic connectivity testing. This endpoint bypasses rate limiting and provides minimal response data.
+ *     tags: [General]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Server is responding
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "pong"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-07-19T09:41:07.123Z"
+ *             example:
+ *               success: true
+ *               message: "pong"
+ *               timestamp: "2025-07-19T09:41:07.123Z"
+ */
 app.get('/ping', (req, res) => {
   res.status(200).json({ 
     success: true, 
