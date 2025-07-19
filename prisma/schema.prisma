@@ -1,0 +1,116 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Admin model for authentication
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String   // Will be hashed
+  name         String
+  role         String   @default("admin")
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+  
+  @@map("admins")
+}
+
+// Refresh token model for JWT authentication
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  adminId   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  
+  @@map("refresh_tokens")
+}
+
+// Main submission model
+model Submission {
+  id                String           @id @default(cuid())
+  teamName          String
+  teamLeader        String
+  email             String           @unique // To prevent duplicate submissions
+  status            SubmissionStatus @default(PENDING)
+  demoUrl           String?
+  githubRepository  String?
+  presentationLink  String?
+  submittedAt       DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  // Additional user information for tracking
+  ipAddress         String?
+  userAgent         String?
+  browserInfo       Json?            // Store browser details as JSON
+  deviceInfo        Json?            // Store device information as JSON
+  location          Json?            // Store geolocation if available
+  
+  // Relations
+  auditLogs AuditLog[]
+  
+  @@map("submissions")
+}
+
+// Audit log model for tracking all changes
+model AuditLog {
+  id           String        @id @default(cuid())
+  action       AuditAction
+  entityType   String        // "submission", "admin", etc.
+  entityId     String        // ID of the affected entity
+  oldValues    Json?         // Previous values before change
+  newValues    Json?         // New values after change
+  description  String?       // Human readable description
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime      @default(now())
+  
+  // Relations (optional admin - for system actions)
+  adminId      String?
+  admin        Admin?        @relation(fields: [adminId], references: [id])
+  
+  // Relations for submissions
+  submissionId String?
+  submission   Submission?   @relation(fields: [submissionId], references: [id])
+  
+  @@map("audit_logs")
+}
+
+// Enums
+enum SubmissionStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  REQUIRES_CHANGES
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  STATUS_CHANGE
+  REVIEW
+  APPROVE
+  REJECT
+}
