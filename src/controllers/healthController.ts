@@ -323,4 +323,44 @@ export class HealthController {
       });
     }
   });
+
+  /**
+   * Keep-alive service status endpoint
+   */
+  static keepAliveStatus = asyncHandler(async (
+    req: Request,
+    res: Response<ApiResponse>
+  ): Promise<void> => {
+    try {
+      const { keepAliveService } = await import('../services/keepAliveService');
+      const status = keepAliveService.getStatus();
+      
+      const data = {
+        ...status,
+        environment: config.nodeEnv,
+        description: 'Prevents server from sleeping on free hosting platforms by pinging every 30 seconds',
+        lastPing: new Date().toISOString()
+      };
+
+      res.status(200).json({
+        success: true,
+        message: 'Keep-alive service status retrieved',
+        data,
+        timestamp: new Date().toISOString(),
+        requestId: req.requestId,
+      });
+    } catch (error) {
+      logger.error('Keep-alive status error', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        requestId: req.requestId,
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve keep-alive status',
+        timestamp: new Date().toISOString(),
+        requestId: req.requestId,
+      });
+    }
+  });
 }

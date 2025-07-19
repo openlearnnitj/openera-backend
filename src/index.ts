@@ -12,6 +12,9 @@ import { requestLogger } from './middleware/request';
 import { errorHandler } from './middleware/errorHandler';
 import { generalRateLimit } from './middleware/rateLimit';
 
+// Services
+import { keepAliveService } from './services/keepAliveService';
+
 const app = express();
 
 // Trust proxy if behind reverse proxy (for IP detection)
@@ -134,6 +137,9 @@ app.use(errorHandler);
 const gracefulShutdown = async (signal: string) => {
   logger.info(`Received ${signal}, starting graceful shutdown...`);
   
+  // Stop keep-alive service
+  keepAliveService.stop();
+  
   process.exit(0);
 };
 
@@ -153,6 +159,9 @@ const startServer = async () => {
       logger.info(`Environment: ${config.nodeEnv}`);
       logger.info(`JWT Secret configured: ${!!config.jwt.secret}`);
       logger.info(`Database URL configured: ${!!config.databaseUrl}`);
+      
+      // Start keep-alive service after server is running
+      keepAliveService.start();
     });
 
     // Handle server errors

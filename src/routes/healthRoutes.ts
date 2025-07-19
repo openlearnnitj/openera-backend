@@ -278,4 +278,52 @@ router.get('/detailed', HealthController.systemInfo);
  */
 router.get('/db', HealthController.databaseTest);
 
+/**
+ * @swagger
+ * /api/health/keep-alive:
+ *   get:
+ *     summary: Keep-alive service status
+ *     description: Returns the status of the internal keep-alive service that prevents the server from sleeping on free hosting platforms
+ *     tags: [Health]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Keep-alive service status retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Keep-alive service status retrieved"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     isRunning:
+ *                       type: boolean
+ *                       description: "Whether the keep-alive service is active"
+ *                       example: true
+ *                     nextRun:
+ *                       type: string
+ *                       format: date-time
+ *                       description: "When the next ping will occur"
+ *                       example: "2025-07-19T09:41:37.123Z"
+ *                     environment:
+ *                       type: string
+ *                       example: "production"
+ *                     description:
+ *                       type: string
+ *                       example: "Prevents server from sleeping on free hosting platforms by pinging every 30 seconds"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                 requestId:
+ *                   type: string
+ */
+router.get('/keep-alive', HealthController.keepAliveStatus);
+
 export default router;
